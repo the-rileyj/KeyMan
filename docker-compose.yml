@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  keymanager:
+    build: ./keymanager
+    expose:
+      - "9902"
+    restart: always
+    volumes:
+      - "./keymanager/creds:/go/src/github.com/the-rileyj/KeyMan/keymanager/creds"
+
+  gatekeeper:
+    build: ./gatekeeper
+    expose:
+      - "9901"
+    ports:
+      - "443:9901"
+    restart: always
+
