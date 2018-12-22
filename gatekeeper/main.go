@@ -12,7 +12,7 @@ import (
 
 func main() {
 	debuggingFlag := flag.Bool("debug", false, "Use the HTTP router")
-	forwardingFlag := flag.String("forward", "http://keymanager", "Set the host that the Gate Keeper will forward successful requests to")
+	forwardingFlag := flag.String("forward", "http://keymanager:9902", "Set the host that the Gate Keeper will forward successful requests to")
 	lockingFlag := flag.String("lock", "104.196.23.77", "Set the IP that will be able to access the key manager")
 
 	flag.Parse()
