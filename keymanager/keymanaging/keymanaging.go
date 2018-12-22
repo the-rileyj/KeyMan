@@ -2,11 +2,11 @@ package keymanaging
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -126,30 +126,20 @@ func NewKeyManagingRouter() *gin.Engine {
 
 // CreateInfoHandler creates a handler which sends back
 func CreateInfoHandler(r *gin.Engine) func(c *gin.Context) {
-	var longestPath, longestMethod int
-
-	routesInfoList := make([]string, 0)
-
-	for _, routeInfo := range r.Routes() {
-		if len(routeInfo.Path) > longestPath {
-			longestPath = len(routeInfo.Path)
-		}
-
-		if len(routeInfo.Method) > longestMethod {
-			longestMethod = len(routeInfo.Method)
-		}
-	}
-
 	routesInfo := append(gin.RoutesInfo{}, r.Routes()...)
 
+	// Sort by path length (shortest to longest) and by HTTP method (alphabetical order)
 	sort.Slice(routesInfo, func(r1, r2 int) bool {
-		return len(routesInfo[r1].Path) > len(routesInfo[r2].Path)
+		return strings.Compare(routesInfo[r1].Method, routesInfo[r2].Method) < 0 && len(routesInfo[r1].Path) < len(routesInfo[r2].Path)
 	})
 
-	routeFormatString := fmt.Sprintf("%%-%ds - %%-%ds", longestMethod, longestPath)
+	routesInfoList := make([]gin.H, 0)
 
 	for _, routeInfo := range routesInfo {
-		routesInfoList = append(routesInfoList, fmt.Sprintf(routeFormatString, routeInfo.Method, routeInfo.Path))
+		routesInfoList = append(routesInfoList, gin.H{
+			"method": routeInfo.Method,
+			"path":   routeInfo.Path,
+		})
 	}
 
 	prettyPrintedRoutes, _ := json.MarshalIndent(routesInfoList, "", "  ")
