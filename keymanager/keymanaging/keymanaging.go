@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -130,7 +129,7 @@ func CreateInfoHandler(r *gin.Engine) func(c *gin.Context) {
 
 	// Sort by path length (shortest to longest) and by HTTP method (alphabetical order)
 	sort.Slice(routesInfo, func(r1, r2 int) bool {
-		return strings.Compare(routesInfo[r1].Method, routesInfo[r2].Method) < 0 && len(routesInfo[r1].Path) < len(routesInfo[r2].Path)
+		return routesInfo[r1].Method < routesInfo[r2].Method && len(routesInfo[r1].Path) < len(routesInfo[r2].Path)
 	})
 
 	routesInfoList := make([]gin.H, 0)
