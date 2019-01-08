@@ -39,7 +39,7 @@ func (kd keyData) cloneKeys() map[string]string {
 	return clone
 }
 
-func (kd keyData) delete(key string) {
+func (kd *keyData) delete(key string) {
 	kd.mutex.Lock()
 
 	delete(kd.keys, key)
@@ -55,6 +55,24 @@ func (kd keyData) get(key string) (string, bool) {
 	kd.mutex.Unlock()
 
 	return value, exists
+}
+
+func (kd keyData) getMany(keys ...string) map[string]string {
+	keyData := make(map[string]string)
+
+	kd.mutex.Lock()
+
+	for _, key := range keys {
+		value, exists := kd.keys[key]
+
+		if exists {
+			keyData[key] = value
+		}
+	}
+
+	kd.mutex.Unlock()
+
+	return keyData
 }
 
 func newKeyData() keyData {
@@ -96,14 +114,19 @@ func UnloadKeyDataKeys(w io.Writer) error {
 
 // Response represents the response which will occur from any route in the keymanaging package
 type Response struct {
-	Error   bool   `json:"error"`
-	Message string `json:"msg"`
+	Error   bool        `json:"error"`
+	Message interface{} `json:"msg"`
 }
 
-// Request is the struct representing the format that POST and PUT requests will use to create and update keys
-type Request struct {
+// RequestSingle is the struct representing the format that POST and PUT requests will use to create and update a single key value pair
+type RequestSingle struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+// RequestMany is the struct representing the format that requests will use to get many key value pairs
+type RequestMany struct {
+	Keys []string `json:"keys"`
 }
 
 func init() {
@@ -180,14 +203,32 @@ func HandleGetKey(c *gin.Context) {
 	c.JSON(200, Response{false, value})
 }
 
+// HandleGetManyKeys handles a POST request for the values of many existing keys
+func HandleGetManyKeys(c *gin.Context) {
+	var GetManyRequest RequestMany
+
+	err := json.NewDecoder(c.Request.Body).Decode(&GetManyRequest)
+
+	if err != nil {
+		c.AbortWithStatusJSON(400, Response{true, "could not unmarshal JSON"})
+
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"err": false,
+		"msg": keys.getMany(GetManyRequest.Keys...),
+	})
+}
+
 // HandlePostKey handles the POST request for the creation of a key/value pair which does not already exist
 func HandlePostKey(c *gin.Context) {
-	var UpdateRequest Request
+	var UpdateRequest RequestSingle
 
 	err := json.NewDecoder(c.Request.Body).Decode(&UpdateRequest)
 
 	if err != nil {
-		c.AbortWithStatusJSON(400, Response{true, "could not unmarshall JSON"})
+		c.AbortWithStatusJSON(400, Response{true, "could not unmarshal JSON"})
 
 		return
 	}
@@ -218,12 +259,12 @@ func HandlePostKey(c *gin.Context) {
 
 // HandlePutKey handles the PUT request for the updating of a key/value pair which already exists
 func HandlePutKey(c *gin.Context) {
-	var UpdateRequest Request
+	var UpdateRequest RequestSingle
 
 	err := json.NewDecoder(c.Request.Body).Decode(&UpdateRequest)
 
 	if err != nil {
-		c.AbortWithStatusJSON(400, Response{true, "could not unmarshall JSON"})
+		c.AbortWithStatusJSON(400, Response{true, "could not unmarshal JSON"})
 
 		return
 	}
