@@ -20,7 +20,8 @@ func init() {
 
 // Need to test the following:
 // If key does not exist then a HTTP/400 status is returned,
-//     error field is true, the update field is falsed true,, and the message is the "errorKeyDoesNotExist" constant
+//     error field is true, the update field is falsed true,
+//	   and the message is the "ErrorKeyDoesNotExist" constant
 // If key exists then key and value is deleted, a HTTP/200 status is returned,
 //     the error field is false, the update field is true, and the message is empty
 func TestHandleDeleteKey(t *testing.T) {
@@ -39,7 +40,7 @@ func TestHandleDeleteKey(t *testing.T) {
 		{
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorKeyDoesNotExist,
+				Message: ErrorKeyDoesNotExist,
 			},
 			ExpectedStatusCode:   400,
 			ExpectedValue:        "",
@@ -105,7 +106,7 @@ func TestHandleDeleteKey(t *testing.T) {
 
 // Need to test the following:
 // If key does not exist then a HTTP/400 status is returned,
-//     error field is true, and the message is the "errorKeyDoesNotExist" constant
+//     error field is true, and the message is the "ErrorKeyDoesNotExist" constant
 // If key exists then the value for the provided key is returned, a HTTP/200 status is returned,
 //     the error field is false, and the message is the value for the key
 func TestHandleGetKey(t *testing.T) {
@@ -124,7 +125,7 @@ func TestHandleGetKey(t *testing.T) {
 		{
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorKeyDoesNotExist,
+				Message: ErrorKeyDoesNotExist,
 			},
 			ExpectedStatusCode: 400,
 			Key:                "DoNotTestHandleGetKey",
@@ -179,10 +180,112 @@ func TestHandleGetKey(t *testing.T) {
 }
 
 // Need to test the following:
+// If any of the provided keys do not exist then they are not found in the returned map
+//     in the message field, the error field is false, and a HTTP/200 status is returned
+// If key exists then the value for the provided key can be found in the returned map in
+//     the message field, the error field is false and a HTTP/200 status is returned
+func TestHandleGetManyKeys(t *testing.T) {
+	CheckResponseAgainstExpected := func(response map[string]interface{}, expected map[string]string) bool {
+		for key, value := range expected {
+			if _, exists := response[key]; !exists {
+				return false
+			}
+
+			if value != response[key].(string) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	keys.set("TestHandleGetKey", "success")
+	keys.set("TestHandleGetAnotherKey", "good")
+	keys.set("TestHandleGetAnotherAnotherKey", "great")
+
+	router := gin.New()
+	router.POST("/keys", HandleGetManyKeys)
+
+	tests := []struct {
+		ExpectedResponse   Response
+		ExpectedStatusCode int
+		Request            RequestMany
+	}{
+		{
+			ExpectedResponse: Response{
+				Error: false,
+				Message: map[string]string{
+					"TestHandleGetKey":        "success",
+					"TestHandleGetAnotherKey": "good",
+				},
+			},
+			ExpectedStatusCode: 200,
+			Request: RequestMany{
+				Keys: []string{
+					"TestHandleGetKey",
+					"TestHandleGetAnotherKey",
+				},
+			},
+		},
+		{
+			ExpectedResponse: Response{
+				Error: false,
+				Message: map[string]string{
+					"TestHandleGetAnotherAnotherKey": "great",
+				},
+			},
+			ExpectedStatusCode: 200,
+			Request: RequestMany{
+				Keys: []string{
+					"TestHandleGetAnotherAnotherKey",
+					"TestNonexistantKey",
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		reader, writer := io.Pipe()
+
+		mockRequest, err := http.NewRequest("POST", "/keys", reader)
+
+		if err != nil {
+			t.Fatal("could not create the mock request")
+		}
+
+		go func() { json.NewEncoder(writer).Encode(test.Request) }()
+
+		mockResponseWriter := httptest.NewRecorder()
+
+		router.ServeHTTP(mockResponseWriter, mockRequest)
+
+		var mockResponseJSON Response
+
+		err = json.NewDecoder(mockResponseWriter.Body).Decode(&mockResponseJSON)
+
+		if err != nil {
+			t.Error("Could not decode the response body into json")
+
+			continue
+		}
+
+		if mockResponseWriter.Code != test.ExpectedStatusCode || mockResponseJSON.Error != test.ExpectedResponse.Error || !CheckResponseAgainstExpected(mockResponseJSON.Message.(map[string]interface{}), test.ExpectedResponse.Message.(map[string]string)) {
+			t.Errorf(
+				`HandleGetKey(context) = Status Code: HTTP/%d and Response: "%v", expected HTTP/%d and Response: "%v"`,
+				mockResponseWriter.Code,
+				mockResponseJSON,
+				test.ExpectedStatusCode,
+				test.ExpectedResponse,
+			)
+		}
+	}
+}
+
+// Need to test the following:
 // If key already exists then a HTTP/400 status is returned,
-//     error field is true, the update field is false, and the message is the "errorKeyAlreadyExists" constant
+//     error field is true, the update field is false, and the message is the "ErrorKeyAlreadyExists" constant
 // If key has any character which cannot be put into a URL with URL encoding then a HTTP/400 status is returned,
-//     error field is true, the update field is false, and the message is the "errorInvalidKey" constant
+//     error field is true, the update field is false, and the message is the "ErrorInvalidKey" constant
 // If key does not exist then key and value pair is created, a HTTP/201 status is returned,
 //     the error field is false, the update field is true, and the message field is empty
 func TestHandlePostKey(t *testing.T) {
@@ -201,7 +304,7 @@ func TestHandlePostKey(t *testing.T) {
 		{
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorKeyAlreadyExists,
+				Message: ErrorKeyAlreadyExists,
 			},
 			ExpectedStatusCode:   400,
 			ExpectedValue:        "success",
@@ -212,7 +315,7 @@ func TestHandlePostKey(t *testing.T) {
 		{
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorInvalidKey,
+				Message: ErrorInvalidKey,
 			},
 			ExpectedStatusCode:   400,
 			ExpectedValue:        "",
@@ -234,7 +337,7 @@ func TestHandlePostKey(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		requestBytes, err := json.Marshal(Request{test.Key, test.Value})
+		requestBytes, err := json.Marshal(RequestSingle{test.Key, test.Value})
 
 		if err != nil {
 			t.Error("Could not read the response body into bytes")
@@ -288,7 +391,7 @@ func TestHandlePostKey(t *testing.T) {
 
 // Need to test the following:
 // If key already exists then a HTTP/400 status is returned,
-//     error field is true, the update field is false, and the message is the "errorKeyAlreadyExists" constant
+//     error field is true, the update field is false, and the message is the "ErrorKeyAlreadyExists" constant
 // If key exists then the value for the key is updated, a HTTP/200 status is returned,
 //     the error field is false, the update field is true, and the message is empty
 func TestHandlePutKey(t *testing.T) {
@@ -307,7 +410,7 @@ func TestHandlePutKey(t *testing.T) {
 		{
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorKeyDoesNotExist,
+				Message: ErrorKeyDoesNotExist,
 			},
 			ExpectedStatusCode:   400,
 			ExpectedValue:        "",
@@ -329,7 +432,7 @@ func TestHandlePutKey(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		requestBytes, err := json.Marshal(Request{test.Key, test.Value})
+		requestBytes, err := json.Marshal(RequestSingle{test.Key, test.Value})
 
 		if err != nil {
 			t.Error("Could not read the response body into bytes")
@@ -383,7 +486,8 @@ func TestHandlePutKey(t *testing.T) {
 
 // Need to test the following:
 // If the route does not exist then a HTTP/404 status is returned,
-//     error field is true, the update field is false, and the message is the "errorBadRequest" constant
+//     error field is true, the update field is false, and the
+//	   message is the "ErrorBadRequest" constant
 // If the route exists then the route responds as expected
 func TestKeyManagingRouter(t *testing.T) {
 	var router *gin.Engine
@@ -399,7 +503,7 @@ func TestKeyManagingRouter(t *testing.T) {
 			ExpectedStatusCode: 404,
 			ExpectedResponse: Response{
 				Error:   true,
-				Message: errorBadRequest,
+				Message: ErrorBadRequest,
 			},
 			HandlerFuncs: map[string]func(c *gin.Context){},
 		},

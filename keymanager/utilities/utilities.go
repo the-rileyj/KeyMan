@@ -55,6 +55,7 @@ func GetKeyValueWithContextAndClient(ctx context.Context, client *http.Client, k
 	}
 
 	if keyResponseData.Error {
+		// if keyResponseData.Message.(string) == keymanaging.
 		return "", errors.New(keyResponseData.Message.(string))
 	}
 
@@ -94,7 +95,7 @@ func GetManyKeyValuesWithContextAndClient(ctx context.Context, client *http.Clie
 		return nil, err
 	}
 
-	var keyResponseData keymanaging.Response
+	keyResponseData := keymanaging.Response{Message: make(map[string]string, 0)}
 
 	err = json.NewDecoder(keyResponse.Body).Decode(&keyResponseData)
 
@@ -106,5 +107,11 @@ func GetManyKeyValuesWithContextAndClient(ctx context.Context, client *http.Clie
 		return nil, errors.New(keyResponseData.Message.(string))
 	}
 
-	return keyResponseData.Message.(map[string]string), nil
+	returnMap := make(map[string]string)
+
+	for key, value := range keyResponseData.Message.(map[string]interface{}) {
+		returnMap[key] = value.(string)
+	}
+
+	return returnMap, nil
 }

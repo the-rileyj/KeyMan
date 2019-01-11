@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	errorBadRequest       string = "could not find a handler for the provided request"
-	errorInvalidKey       string = "one or many character in the key provided make it invalid for creation; only numbers and letters are allowed"
-	errorKeyAlreadyExists string = "the key provided for creation already exists"
-	errorKeyDoesNotExist  string = "the key provided does not exist"
+	ErrorBadRequest       string = "could not find a handler for the provided request"
+	ErrorInvalidKey       string = "one or many character in the key provided make it invalid for creation; only numbers and letters are allowed"
+	ErrorKeyAlreadyExists string = "the key provided for creation already exists"
+	ErrorKeyDoesNotExist  string = "the key provided does not exist"
 )
 
 type keyData struct {
@@ -62,6 +62,8 @@ func (kd keyData) getMany(keys ...string) map[string]string {
 
 	kd.mutex.Lock()
 
+	defer kd.mutex.Unlock()
+
 	for _, key := range keys {
 		value, exists := kd.keys[key]
 
@@ -69,8 +71,6 @@ func (kd keyData) getMany(keys ...string) map[string]string {
 			keyData[key] = value
 		}
 	}
-
-	kd.mutex.Unlock()
 
 	return keyData
 }
@@ -140,7 +140,7 @@ func NewKeyManagingRouter() *gin.Engine {
 	KeyManagingRouter.Use(gin.Recovery())
 
 	KeyManagingRouter.NoRoute(func(c *gin.Context) {
-		c.JSON(404, Response{Error: true, Message: errorBadRequest})
+		c.JSON(404, Response{Error: true, Message: ErrorBadRequest})
 	})
 
 	return KeyManagingRouter
@@ -181,7 +181,7 @@ func HandleDeleteKey(c *gin.Context) {
 	}
 
 	if !exists {
-		c.AbortWithStatusJSON(400, Response{true, errorKeyDoesNotExist})
+		c.AbortWithStatusJSON(400, Response{true, ErrorKeyDoesNotExist})
 
 		return
 	}
@@ -195,7 +195,7 @@ func HandleGetKey(c *gin.Context) {
 	value, exists := keys.get(c.Param("key"))
 
 	if !exists {
-		c.AbortWithStatusJSON(400, Response{true, errorKeyDoesNotExist})
+		c.AbortWithStatusJSON(400, Response{true, ErrorKeyDoesNotExist})
 
 		return
 	}
@@ -236,7 +236,7 @@ func HandlePostKey(c *gin.Context) {
 	encodedKey := url.QueryEscape(UpdateRequest.Key)
 
 	if encodedKey != UpdateRequest.Key {
-		c.AbortWithStatusJSON(400, Response{true, errorInvalidKey})
+		c.AbortWithStatusJSON(400, Response{true, ErrorInvalidKey})
 
 		return
 	}
@@ -248,7 +248,7 @@ func HandlePostKey(c *gin.Context) {
 	}
 
 	if exists {
-		c.AbortWithStatusJSON(400, Response{true, errorKeyAlreadyExists})
+		c.AbortWithStatusJSON(400, Response{true, ErrorKeyAlreadyExists})
 
 		return
 	}
@@ -276,7 +276,7 @@ func HandlePutKey(c *gin.Context) {
 	}
 
 	if !exists {
-		c.AbortWithStatusJSON(400, Response{true, errorKeyDoesNotExist})
+		c.AbortWithStatusJSON(400, Response{true, ErrorKeyDoesNotExist})
 
 		return
 	}
