@@ -79,18 +79,30 @@ Testing all of the programs:
 
 ```bash
 rj@desktop:~/$ go test ./...
+?   	github.com/the-rileyj/KeyMan/gatekeeper	[no test files]
+ok  	github.com/the-rileyj/KeyMan/gatekeeper/gatekeeping	0.804s
+?   	github.com/the-rileyj/KeyMan/keymanager	[no test files]
+ok  	github.com/the-rileyj/KeyMan/keymanager/keymanaging	0.390s
+ok  	github.com/the-rileyj/KeyMan/keymanager/utilities	0.184s
+Success: Tests passed.
 ```
 
 Testing the Gatekeeper program:
 
 ```bash
 rj@desktop:~/gatekeeper$ go test ./...
+?   	github.com/the-rileyj/KeyMan/gatekeeper	[no test files]
+ok  	github.com/the-rileyj/KeyMan/gatekeeper/gatekeeping	0.804s
+Success: Tests passed.
 ```
 
 Testing the Keymanager program:
 
 ```bash
 rj@desktop:~/keymanager$ go test ./...
+ok  	github.com/the-rileyj/KeyMan/keymanager/keymanaging	0.390s
+ok  	github.com/the-rileyj/KeyMan/keymanager/utilities	0.184s
+Success: Tests passed.
 ```
 
 Soon a `docker-compose.yml` file will be created for testing everything, for the time being this is sufficient however.
